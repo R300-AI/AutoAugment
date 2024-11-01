@@ -1,8 +1,13 @@
+import albumentations as A
+import matplotlib.pyplot as plt
+import numpy as np
+import os, shutil, yaml, tqdm, time, cv2, gc
+
 class ObjectAugmentor():
-    def __init__(self, maximum_size = 16, maximum_process_second = 60 * 60 * 24):
+    def __init__(self, maximum_size = 16, maximum_process_second = 60 * 60 * 24, ignore_classes = []):
         self.maximum_size = maximum_size
         self.maximum_process_second = maximum_process_second
-        self.ignore_classes = []
+        self.ignore_classes = ignore_classes
 
     def summary(self, dataset_path, new_dataset_path):
         if os.path.exists(new_dataset_path):
@@ -55,8 +60,7 @@ class ObjectAugmentor():
                     cropped_bboxes[:, 3] = (cropped_bboxes[:, 3] - y1) / (y2 - y1)
                     return cropped_image, cropped_classes, cropped_bboxes         
         else:
-            classes, bboxes = annots[:, 0], np.clip(annots[:, 1:], 0, 1)
-            return image, classes, bboxes
+            return image, [], []
 
     def draw_heatmap(self, image, annots):
         search_map = np.zeros(image.shape[: 2])
@@ -99,10 +103,10 @@ class ObjectAugmentor():
         images = os.listdir(new_dataset_path + '/train/images')
         limit_second = self.maximum_process_second / len(images)
         print('process each samples limited to', limit_second, 'seconds.')
-        for image_name in tqdm(images):
+        for image_name in tqdm.tqdm(images):
             for label_name in os.listdir(new_dataset_path + '/train/labels'):
                 if image_name.rstrip('.jpg') + '.txt' == label_name:
-                    #fig = plt.figure(figsize=[12, 5])
+                    
                     transformer = A.Compose([A.Blur(p=0.8), A.CoarseDropout(p=0.8,hole_height_range=(64, 256), hole_width_range=(64, 256)),
                                 A.CLAHE(p=0.8), A.GaussNoise(p=0.8), A.HorizontalFlip(p=0.5), A.PixelDropout(p=0.8),
                                 A.RandomBrightnessContrast(p=0.9), A.RandomShadow(p=0.8, shadow_intensity_range=(0.6, 0.9)),
@@ -120,7 +124,8 @@ class ObjectAugmentor():
                         else:
                             label = []
                     search_map = self.draw_heatmap(image, annots)
-
+                    if verbose == True:
+                        fig = plt.figure(figsize=[12, 5])
                     for i in range(self.maximum_size):
                         new_image, new_label = image.copy(), list(label.copy())
                         if abs(np.random.rand(1)[0]) >= 0.0:
@@ -155,19 +160,23 @@ class ObjectAugmentor():
                                     for row in new_label:
                                         row = [int(row[0])] + list(row[1:])
                                         f.write(f"{' '.join(str(i) for i in row)}\n")
-                        if i < 15:
-                            plt.subplot(3, 5, i + 1)
-                            plt.imshow(drawer(cv2.cvtColor(new_image, cv2.COLOR_RGB2BGR), new_bboxes))
-                            plt.tight_layout(); plt.xticks([]); plt.yticks([])
-                        if (time.time() - start_time) > limit_second:
-                            break
-                    plt.savefig(image_path.split('/train/images/')[0] + '/log/' + image_path.split('/train/images/')[-1])
+                            if i < 15:
+                                plt.subplot(3, 5, i + 1)
+                                plt.imshow(drawer(cv2.cvtColor(new_image, cv2.COLOR_RGB2BGR), new_bboxes))
+                                plt.tight_layout(); plt.xticks([]); plt.yticks([])
+                            if (time.time() - start_time) > limit_second:
+                                break
                     if verbose == True:
-                        plt.show()
-                    del new_image, new_label, image, label, transformer
-                    plt.clf(); plt.cla(); gc.collect()
+                        plt.savefig(image_path.split('/train/images/')[0] + '/log/' + image_path.split('/train/images/')[-1])
+                        del new_image, new_label, image, label, transformer
+                        plt.clf(); plt.cla(); gc.collect()
         return new_dataset_path
-
+        
+def RoI(box1, box2):
+    if min(box1[2], box2[2]) < max(box1[0], box2[0]) or min(box1[3], box2[3]) < max(box1[1], box2[1]):
+        return False
+    return True
+    
 def xyxy_to_cxcywh(x):
   x_c = (x[..., 0] + x[..., 2]) / 2
   y_c = (x[..., 1] + x[..., 3]) / 2
@@ -182,7 +191,7 @@ def cxcywh_to_xyxy(x, size):
       x2 = np.clip((x_c + w / 2) * size, 0, size)
       y2 = np.clip((y_c + h / 2) * size, 0, size)
       return x1, y1, x2, y2
-
+      
 def drawer(image, bboxes):
     for box in bboxes:
         x1, y1, x2, y2 = cxcywh_to_xyxy(box, 640)
@@ -191,41 +200,3 @@ def drawer(image, bboxes):
         y1, y2 = int(y1/ 640 * image.shape[0]), int(y2/ 640 * image.shape[0])
         cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 15)
     return image
-
-
-def BuildDataset(folder_path, samples_path):
-    classes = open(f"{samples_path}/classes.txt", "r").read().split("\n")[:-1]
-    samples = []
-    labeled_num, unlabeled_num = 0, 0
-    for img in os.listdir(samples_path):
-        flag = False
-        if img.endswith('.jpg'):
-            for label in os.listdir(samples_path):
-                if label.endswith('.txt') and (label.rstrip('.txt') + '.jpg') == img:
-                    samples.append((img, label))
-                    flag = True
-        if img.endswith('.jpg'):
-            if flag == False:
-                print('【\033[91m' + 'unlabeled'+ '\033[0m】', img)
-                unlabeled_num += 1
-            else:
-                print('【\033[92m' + 'labeled'+ '\033[0m】', img)
-                labeled_num += 1
-    print(f' - Total labeled samples:{labeled_num}')
-    print(f' - Total unlabeled samples:{unlabeled_num}')
-            
-    DATASET = {'nc': len(classes), 'names': classes, 'folder': folder_path}
-
-    if os.path.exists(folder_path):
-        shutil.rmtree(folder_path)
-    os.makedirs(folder_path)
-    for subset in ['train', 'val', 'test']:
-        DATASET[subset] = os.path.join(folder_path, f'{subset}/images')
-        os.makedirs(DATASET[subset]); os.makedirs(os.path.join(folder_path, f'{subset}/labels'))
-    os.makedirs(os.path.join(folder_path, 'log'))
-
-    DATASET['images'] =  ", ".join(list(np.array(samples)[:, 0]))
-
-    with open(f'{folder_path}/data.yaml', 'w') as f:
-        yaml.dump(DATASET, f, default_flow_style=None)
-    return DATASET
