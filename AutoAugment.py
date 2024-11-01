@@ -1,4 +1,4 @@
-class AutoAugment():
+class ObjectAugmentor():
     def __init__(self, maximum_size = 16, maximum_process_second = 60 * 60 * 24):
         self.maximum_size = maximum_size
         self.maximum_process_second = maximum_process_second
