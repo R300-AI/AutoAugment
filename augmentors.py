@@ -8,6 +8,16 @@ class ObjectAugmentor():
         self.maximum_size = maximum_size
         self.maximum_process_second = maximum_process_second
         self.ignore_classes = ignore_classes
+        self.transform_option = [A.Blur(p=0.8), 
+                                 A.CLAHE(p=0.8), 
+                                 A.GaussNoise(p=0.8), 
+                                 A.HorizontalFlip(p=0.5), 
+                                 A.PixelDropout(p=0.8), 
+                                 A.RandomBrightnessContrast(p=0.9), 
+                                 A.RandomShadow(p=0.8, shadow_intensity_range=(0.6, 0.9)), 
+                                 A.BBoxSafeRandomCrop(p=.7)
+                                 ]   
+        #, A.CoarseDropout(p=0.8,hole_height_range=(64, 256)
 
     def summary(self, dataset_path, new_dataset_path):
         if os.path.exists(new_dataset_path):
@@ -102,11 +112,6 @@ class ObjectAugmentor():
         for image_name in tqdm.tqdm(images):
             for label_name in os.listdir(new_dataset_path + '/train/labels'):
                 if image_name.rstrip('.jpg') + '.txt' == label_name:
-                    
-                    transformer = A.Compose([A.Blur(p=0.8), A.CoarseDropout(p=0.8,hole_height_range=(64, 256), hole_width_range=(64, 256)),
-                                A.CLAHE(p=0.8), A.GaussNoise(p=0.8), A.HorizontalFlip(p=0.5), A.PixelDropout(p=0.8),
-                                A.RandomBrightnessContrast(p=0.9), A.RandomShadow(p=0.8, shadow_intensity_range=(0.6, 0.9)),
-                                A.BBoxSafeRandomCrop(p=.7)], bbox_params=A.BboxParams(format='yolo'))
                     start_time = time.time()
                     image_path, label_path = f"{new_dataset_path}/train/images/{image_name}", f"{new_dataset_path}/train/labels/{label_name}"
                     image = cv2.resize(cv2.imread(image_path), (1440, 1080), interpolation=cv2.INTER_AREA)
@@ -126,24 +131,28 @@ class ObjectAugmentor():
                     for i in range(self.maximum_size):
                         new_image, new_label = image.copy(), list(label.copy())
                         if abs(np.random.rand(1)[0]) >= 0.0:
-                            cropped_objects, cropped_classes, cropped_bboxes = self.custom_crop()
-                            print(cropped_objects, cropped_classes, cropped_bboxes)
-                            if type(cropped_objects) != type(None):
-                                width, height = cropped_objects.shape[1], cropped_objects.shape[0]
-                                x1, y1, _, _ = self.startpoint(search_map, x_min = width, y_min = height)
-                                new_image[y1: y1 + height, x1: x1 + width] = cropped_objects
-                                if len(cropped_classes) != 0:
-                                    cropped_bboxes[:, 0] = (cropped_bboxes[:, 0] * cropped_objects.shape[1] + x1) / new_image.shape[1]
-                                    cropped_bboxes[:, 1] = (cropped_bboxes[:, 1] * cropped_objects.shape[0] + y1) / new_image.shape[0]
-                                    cropped_bboxes[:, 2] = (cropped_bboxes[:, 2] * cropped_objects.shape[1] + x1) / new_image.shape[1]
-                                    cropped_bboxes[:, 3] = (cropped_bboxes[:, 3] * cropped_objects.shape[0] + y1) / new_image.shape[0]
-                                    cropped_bboxes = xyxy_to_cxcywh(np.clip(cropped_bboxes, 0, 1))
-                                    extra_label = np.concatenate((cropped_bboxes, np.expand_dims(cropped_classes, axis=1)), axis=1)
-                                    for row in extra_label:
-                                        new_label.append(list(row))
+                            try:
+                                cropped_objects, cropped_classes, cropped_bboxes = self.custom_crop()
+                                if type(cropped_objects) != type(None):
+                                    width, height = cropped_objects.shape[1], cropped_objects.shape[0]
+                                    x1, y1, _, _ = self.startpoint(search_map, x_min = width, y_min = height)
+                                    new_image[y1: y1 + height, x1: x1 + width] = cropped_objects
+                                    if len(cropped_classes) != 0:
+                                        cropped_bboxes[:, 0] = (cropped_bboxes[:, 0] * cropped_objects.shape[1] + x1) / new_image.shape[1]
+                                        cropped_bboxes[:, 1] = (cropped_bboxes[:, 1] * cropped_objects.shape[0] + y1) / new_image.shape[0]
+                                        cropped_bboxes[:, 2] = (cropped_bboxes[:, 2] * cropped_objects.shape[1] + x1) / new_image.shape[1]
+                                        cropped_bboxes[:, 3] = (cropped_bboxes[:, 3] * cropped_objects.shape[0] + y1) / new_image.shape[0]
+                                        cropped_bboxes = xyxy_to_cxcywh(np.clip(cropped_bboxes, 0, 1))
+                                        extra_label = np.concatenate((cropped_bboxes, np.expand_dims(cropped_classes, axis=1)), axis=1)
+                                        for row in extra_label:
+                                            new_label.append(list(row))
+                            except:
+                                continue
+                            
 
                         new_label = np.array(new_label)
                         new_label = np.array(np.unique(new_label, axis=0))
+                        transformer = A.Compose(self.transform_option, bbox_params=A.BboxParams(format='yolo'))
                         transformed = transformer(image=new_image, bboxes=new_label)
                         if len(transformed['bboxes']) > 0:
                             new_image, new_classes, new_bboxes = transformed['image'], np.array(transformed['bboxes'])[:, 4], np.array(transformed['bboxes'])[:, :4]
