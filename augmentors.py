@@ -30,10 +30,9 @@ class ObjectAugmentor():
                     image_path, label_path = f"{new_dataset_path}/train/images/{image_name}", f"{new_dataset_path}/train/labels/{label_name}"
                     self.paired_sample.append([image_path, label_path])
 
-    def custom_crop(self, crop_limit = 0.2, verbose = True):
+    def custom_crop(self, crop_limit = 0.2):
         i = np.random.choice(len(self.paired_sample), 1)[0]
         image_path, label_path =  self.paired_sample[i][0], self.paired_sample[i][1]
-
         image = cv2.imread(image_path)
         with open(label_path, 'r') as f:
           annots = np.array([[float(x) for x in line.strip().split()] for line in f.readlines()])
@@ -60,7 +59,7 @@ class ObjectAugmentor():
                     cropped_bboxes[:, 3] = (cropped_bboxes[:, 3] - y1) / (y2 - y1)
                     return cropped_image, cropped_classes, cropped_bboxes         
         else:
-            return image, [], []
+            return None, [], []
 
     def draw_heatmap(self, image, annots):
         search_map = np.zeros(image.shape[: 2])
@@ -69,10 +68,8 @@ class ObjectAugmentor():
             for i, (cls, box) in enumerate(zip(classes, bboxes)):
                 if self.classes[int(cls)] != 'battery':
                     x1, y1, x2, y2 = cxcywh_to_xyxy(box, 1)
-                    x1, y1, x2, y2 = int(x1 *image.shape[1]), int(y1 *image.shape[0]), int(x2 *image.shape[1]), int(y2 *image.shape[0])
-                    search_map[y1: y2, y1: y2] += 1
+                    search_map[int(y1 *image.shape[0]): int(y2 *image.shape[0]), int(x1 *image.shape[1]): int(x2 *image.shape[1])] += 1
         search_map[:, -1], search_map[-1, :] = 1, 1
-        
         return search_map
         
     def startpoint(self, search_map, x_min = 64, y_min = 64):
@@ -93,8 +90,7 @@ class ObjectAugmentor():
                     except:
                         pass
                     return x1, y1, x2, y2
-
-        return None, None, None, None
+        return 0, 0, search_map.shape[1], search_map.shape[0]
 
     def fit(self, dataset_path, period_day = 1, save=False, verbose = True):
         new_dataset_path = dataset_path + '_augmented'
@@ -126,25 +122,25 @@ class ObjectAugmentor():
                     search_map = self.draw_heatmap(image, annots)
                     if verbose == True:
                         fig = plt.figure(figsize=[12, 5])
+                        num_of_plot = 0
                     for i in range(self.maximum_size):
                         new_image, new_label = image.copy(), list(label.copy())
                         if abs(np.random.rand(1)[0]) >= 0.0:
-                            cropped_image, cropped_classes, cropped_bboxes = self.custom_crop(verbose=False)
-                            width, height = cropped_image.shape[1], cropped_image.shape[0]
-                            x1, y1, _, _ = self.startpoint(search_map, x_min = width, y_min = height)
-                            if x1 != None:
-                                new_image[y1: y1 + height, x1: x1 + width] = cropped_image
+                            cropped_objects, cropped_classes, cropped_bboxes = self.custom_crop()
+                            print(cropped_objects, cropped_classes, cropped_bboxes)
+                            if type(cropped_objects) != type(None):
+                                width, height = cropped_objects.shape[1], cropped_objects.shape[0]
+                                x1, y1, _, _ = self.startpoint(search_map, x_min = width, y_min = height)
+                                new_image[y1: y1 + height, x1: x1 + width] = cropped_objects
                                 if len(cropped_classes) != 0:
-                                    cropped_bboxes[:, 0] = (cropped_bboxes[:, 0] * cropped_image.shape[1] + x1) / new_image.shape[1]
-                                    cropped_bboxes[:, 1] = (cropped_bboxes[:, 1] * cropped_image.shape[0] + y1) / new_image.shape[0]
-                                    cropped_bboxes[:, 2] = (cropped_bboxes[:, 2] * cropped_image.shape[1] + x1) / new_image.shape[1]
-                                    cropped_bboxes[:, 3] = (cropped_bboxes[:, 3] * cropped_image.shape[0] + y1) / new_image.shape[0]
+                                    cropped_bboxes[:, 0] = (cropped_bboxes[:, 0] * cropped_objects.shape[1] + x1) / new_image.shape[1]
+                                    cropped_bboxes[:, 1] = (cropped_bboxes[:, 1] * cropped_objects.shape[0] + y1) / new_image.shape[0]
+                                    cropped_bboxes[:, 2] = (cropped_bboxes[:, 2] * cropped_objects.shape[1] + x1) / new_image.shape[1]
+                                    cropped_bboxes[:, 3] = (cropped_bboxes[:, 3] * cropped_objects.shape[0] + y1) / new_image.shape[0]
                                     cropped_bboxes = xyxy_to_cxcywh(np.clip(cropped_bboxes, 0, 1))
                                     extra_label = np.concatenate((cropped_bboxes, np.expand_dims(cropped_classes, axis=1)), axis=1)
-
                                     for row in extra_label:
                                         new_label.append(list(row))
-                                    #new_label = np.concatenate((new_label, extra_label), axis=0)
 
                         new_label = np.array(new_label)
                         new_label = np.array(np.unique(new_label, axis=0))
@@ -152,7 +148,6 @@ class ObjectAugmentor():
                         if len(transformed['bboxes']) > 0:
                             new_image, new_classes, new_bboxes = transformed['image'], np.array(transformed['bboxes'])[:, 4], np.array(transformed['bboxes'])[:, :4]
                             new_label = np.concatenate((np.expand_dims(new_classes, axis=1).astype(int), new_bboxes), axis=1)
-
                             if save == True:
                                 new_image_path, new_label_path = image_path.rstrip('.jpg') + f'_{i}.jpg', label_path.rstrip('.txt') + f'_{i}.txt'
                                 cv2.imwrite(new_image_path, new_image)
@@ -160,10 +155,11 @@ class ObjectAugmentor():
                                     for row in new_label:
                                         row = [int(row[0])] + list(row[1:])
                                         f.write(f"{' '.join(str(i) for i in row)}\n")
-                            if i < 15:
-                                plt.subplot(3, 5, i + 1)
-                                plt.imshow(drawer(cv2.cvtColor(new_image, cv2.COLOR_RGB2BGR), new_bboxes))
-                                plt.tight_layout(); plt.xticks([]); plt.yticks([])
+                                if verbose == True and num_of_plot < 15:
+                                    plt.subplot(3, 5, num_of_plot + 1)
+                                    plt.imshow(drawer(cv2.cvtColor(new_image, cv2.COLOR_RGB2BGR), new_bboxes))
+                                    plt.tight_layout(); plt.xticks([]); plt.yticks([])
+                                    num_of_plot += 1
                             if (time.time() - start_time) > limit_second:
                                 break
                     if verbose == True:
