@@ -119,7 +119,7 @@ class ObjectAugmentor():
                             label = []
                     search_map = self.draw_heatmap(image, annots)
                     if verbose == True:
-                        fig = plt.figure(figsize=[12, 5])
+                        plt.figure(figsize=[12, 5]) #fig = 
                         num_of_plot = 0
                     for i in range(self.maximum_size):
                         new_image, new_label = image.copy(), list(label.copy())
