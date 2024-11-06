@@ -166,7 +166,7 @@ class ObjectAugmentor():
                     if verbose == True:
                         plt.savefig(image_path.split('/train/images/')[0] + '/log/' + image_path.split('/train/images/')[-1])
                         del new_image, new_label, image, label, transformer, s
-                        plt.clf(); plt.cla(); gc.collect()              
+                        plt.clf(); plt.cla(); gc.collect(); plt.clf()
         return new_dataset_path
         
 def RoI(box1, box2):
