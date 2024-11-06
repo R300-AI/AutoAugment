@@ -9,12 +9,13 @@ class ObjectAugmentor():
         self.maximum_process_second = maximum_process_second
         self.ignore_classes = ignore_classes
         self.transform_option = transform_option
-        #, A.CoarseDropout(p=0.8,hole_height_range=(64, 256)
 
     def summary(self, dataset_path, new_dataset_path):
         if os.path.exists(new_dataset_path):
             shutil.rmtree(new_dataset_path)
         shutil.copytree(dataset_path, new_dataset_path)
+        os.mkdir(f"{new_dataset_path}/log")
+        
         with open(f'{new_dataset_path}/data.yaml', 'r') as f:
             config = yaml.safe_load(f)
             config['folder'] = new_dataset_path
