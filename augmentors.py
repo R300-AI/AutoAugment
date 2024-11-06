@@ -142,7 +142,6 @@ class ObjectAugmentor():
                             except:
                                 continue
                             
-
                         new_label = np.array(new_label)
                         new_label = np.array(np.unique(new_label, axis=0))
                         transformer = A.Compose(self.transform_option, bbox_params=A.BboxParams(format='yolo'))
@@ -165,14 +164,9 @@ class ObjectAugmentor():
                             if (time.time() - start_time) > limit_second:
                                 break
                     if verbose == True:
-                        print(1)
-                        plt.show()
-                        print(2)
                         plt.savefig(image_path.split('/train/images/')[0] + '/log/' + image_path.split('/train/images/')[-1])
                         del new_image, new_label, image, label, transformer
-                        print(3)
                         plt.clf(); plt.cla(); gc.collect()
-                        print(4)
                         
         return new_dataset_path
         
