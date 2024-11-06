@@ -4,19 +4,11 @@ import numpy as np
 import os, shutil, yaml, tqdm, time, cv2, gc
 
 class ObjectAugmentor():
-    def __init__(self, maximum_size = 16, maximum_process_second = 60 * 60 * 24, ignore_classes = []):
+    def __init__(self, maximum_size = 16, maximum_process_second = 60 * 60 * 24, transform_option = [A.Blur(p=0.8)], ignore_classes = []):
         self.maximum_size = maximum_size
         self.maximum_process_second = maximum_process_second
         self.ignore_classes = ignore_classes
-        self.transform_option = [A.Blur(p=0.8), 
-                                 A.CLAHE(p=0.8), 
-                                 A.GaussNoise(p=0.8), 
-                                 A.HorizontalFlip(p=0.5), 
-                                 A.PixelDropout(p=0.8), 
-                                 A.RandomBrightnessContrast(p=0.9), 
-                                 A.RandomShadow(p=0.8, shadow_intensity_range=(0.6, 0.9)), 
-                                 A.BBoxSafeRandomCrop(p=.7)
-                                 ]   
+        self.transform_option = transform_option
         #, A.CoarseDropout(p=0.8,hole_height_range=(64, 256)
 
     def summary(self, dataset_path, new_dataset_path):
