@@ -157,8 +157,8 @@ class ObjectAugmentor():
                                         row = [int(row[0])] + list(row[1:])
                                         f.write(f"{' '.join(str(i) for i in row)}\n")
                                 if verbose == True and num_of_plot < 15:
-                                    plt.subplot(3, 5, num_of_plot + 1)
-                                    plt.imshow(drawer(cv2.cvtColor(new_image, cv2.COLOR_RGB2BGR), new_bboxes))
+                                    s = plt.subplot(3, 5, num_of_plot + 1)
+                                    s.imshow(drawer(cv2.cvtColor(new_image, cv2.COLOR_RGB2BGR), new_bboxes))
                                     plt.tight_layout(); plt.xticks([]); plt.yticks([])
                                     num_of_plot += 1
                             if (time.time() - start_time) > limit_second:
@@ -167,6 +167,7 @@ class ObjectAugmentor():
                         plt.savefig(image_path.split('/train/images/')[0] + '/log/' + image_path.split('/train/images/')[-1])
                         del new_image, new_label, image, label, transformer
                         plt.clf(); plt.cla(); gc.collect()
+        del plt
                         
         return new_dataset_path
         
