@@ -119,7 +119,7 @@ class ObjectAugmentor():
                             label = []
                     search_map = self.draw_heatmap(image, annots)
                     if verbose == True:
-                        plt.figure(figsize=[12, 5]) #fig = 
+                        fig = plt.figure(figsize=[12, 5]) #
                         num_of_plot = 0
                     for i in range(self.maximum_size):
                         new_image, new_label = image.copy(), list(label.copy())
@@ -166,7 +166,7 @@ class ObjectAugmentor():
                     if verbose == True:
                         plt.savefig(image_path.split('/train/images/')[0] + '/log/' + image_path.split('/train/images/')[-1])
                         del new_image, new_label, image, label, transformer, s
-                        plt.clf(); plt.cla(); gc.collect(); plt.clf()
+                        fig.clf(); plt.clf(); plt.cla(); gc.collect(); plt.clf(); plt.close(fig)
         return new_dataset_path
         
 def RoI(box1, box2):
