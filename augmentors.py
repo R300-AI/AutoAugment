@@ -159,16 +159,21 @@ class ObjectAugmentor():
                                         f.write(f"{' '.join(str(i) for i in row)}\n")
                                 if verbose == True and num_of_plot < 15:
                                     plt.subplot(3, 5, num_of_plot + 1)
-                                    #plt.imshow(drawer(cv2.cvtColor(new_image, cv2.COLOR_RGB2BGR), new_bboxes))
+                                    plt.imshow(drawer(cv2.cvtColor(new_image, cv2.COLOR_RGB2BGR), new_bboxes))
                                     plt.tight_layout(); plt.xticks([]); plt.yticks([])
                                     num_of_plot += 1
                             if (time.time() - start_time) > limit_second:
                                 break
                     if verbose == True:
+                        print(1)
                         plt.show()
+                        print(2)
                         plt.savefig(image_path.split('/train/images/')[0] + '/log/' + image_path.split('/train/images/')[-1])
                         del new_image, new_label, image, label, transformer
+                        print(3)
                         plt.clf(); plt.cla(); gc.collect()
+                        print(4)
+                        
         return new_dataset_path
         
 def RoI(box1, box2):
