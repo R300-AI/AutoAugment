@@ -165,6 +165,7 @@ class ObjectAugmentor():
                             if (time.time() - start_time) > limit_second:
                                 break
                     if verbose == True:
+                        plt.show()
                         plt.savefig(image_path.split('/train/images/')[0] + '/log/' + image_path.split('/train/images/')[-1])
                         del new_image, new_label, image, label, transformer
                         plt.clf(); plt.cla(); gc.collect()
