@@ -108,6 +108,8 @@ class ObjectAugmentor():
                     start_time = time.time()
                     image_path, label_path = f"{new_dataset_path}/train/images/{image_name}", f"{new_dataset_path}/train/labels/{label_name}"
                     image = cv2.resize(cv2.imread(image_path), (1440, 1080), interpolation=cv2.INTER_AREA)
+                    alpha = 1 + np.random.normal() * 0.1
+                    image = cv2.convertScaleAbs(image, image, alpha = alpha, beta = 1)
                     with open(label_path, 'r') as f:
                         annots = np.array([[float(x) for x in line.strip().split()] for line in f.readlines()])
                         if len(annots) != 0:
