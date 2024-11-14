@@ -4,7 +4,7 @@ import numpy as np
 import os, shutil, yaml, tqdm, time, cv2, gc
 
 class ObjectAugmentor():
-    def __init__(self, maximum_size = 16, maximum_process_second = 60 * 60 * 24, transform_option = [A.Blur(p=0.8)], ignore_classes = []):
+    def __init__(self, maximum_size = 16, maximum_process_second = 60 * 60 * 24, transform_option = [A.Blur(p=0.8)], ignore_classes = ['battery']):
         self.maximum_size = maximum_size
         self.maximum_process_second = maximum_process_second
         self.ignore_classes = ignore_classes
